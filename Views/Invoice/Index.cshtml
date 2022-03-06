@@ -1,0 +1,263 @@
+﻿@model IEnumerable<ITRoots.Models.Product>
+
+@{
+    ViewBag.Title = "Add Invoice";
+}
+
+<fieldset style="margin-top:20px">
+    <legend>
+       Products
+    </legend>
+    <div class="container">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="form-group">
+                    Products : @Html.DropDownList("Product", new SelectList(Model,"Id", "Name"),
+                     new { @class = "form-control" })
+                </div>
+            </div>
+        </div>
+    </div>
+</fieldset>
+
+<fieldset>
+    <legend>
+        Product Details
+    </legend>
+    <div class="container">
+        <div class="row">
+            <div class="col-md-3">
+                <div class="form-group">
+                    Quantity :
+                    <input id="txtQuantity" type="text" name="Quantity" value="0" class="form-control" />
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="form-group">
+                    Unit Price :
+                    <input id="txtUnitPrice" type="text" name="Price" value="0.00" readonly="readonly" class="form-control" />
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="form-group">
+                    Total :
+                    <input id="txtTotal" type="text" name="Total" value="0.00" readonly="readonly" class="form-control" />
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="form-group">
+                    <input style="margin-top:20px" type="button" value="Add To List" name="AddToList" id="btnAddToList" class="btn btn-success" />
+                </div>
+            </div>
+        </div>
+    </div>
+</fieldset>
+
+<fieldset>
+    <legend>
+        Invoice Products
+    </legend>
+    <table style="width:100%" id="productsTable">
+        <thead>
+            <tr>
+                <th hidden>
+                    Id
+                </th>
+                <th>
+                    Product Name
+                </th>
+                <th>
+                    Unit Price
+                </th>
+                <th>
+                    Quantity
+                </th>
+                <th>
+                    Total
+                </th>
+                <th>
+                   Action
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+
+        </tbody>
+    </table>
+</fieldset>
+
+<fieldset style="margin-top:20px">
+    <legend>
+        Checkout
+    </legend>
+    <div style="width:80%; display: flex; justify-content: space-between;">
+        <div>
+            Invoice Total :
+            <input id="txtInvoiceTotal" type="text" name="InvoiceTotal" value="0.00" readonly="readonly" class="form-control" />
+        </div>
+        <div style="margin-top:15px">
+            <input type="button" value="Save" name="Save" id="save" class="btn btn-primary" />
+        </div>
+    </div>
+</fieldset>
+
+@section scripts{
+    
+    <script>
+        $(document).ready(function () {   
+            $("#Product").change(function () {
+                const productId = $("#Product").val();
+                getProductUnitPrice(productId);
+            });
+
+            //calculate total price when quantity changed.
+            $("#txtQuantity").change(function () {
+                calculateSubTotal();
+            });
+
+            $("#btnAddToList").click(function () {
+                addToProductsTable();
+            });
+
+            $("#save").click(function () {
+                console.log("clicked");
+                checkOut();
+
+            });
+        });
+
+        function checkOut() {
+
+            let invoiceViewModel = {};
+            let invoiceDetailsList = new Array();
+            invoiceViewModel.FinalTotal = $("#txtInvoiceTotal").val();
+            
+            $("#productsTable").find("tr:gt(0)").each(function () {
+                invoiceDetailViewModel = {};
+                invoiceDetailViewModel.Total = parseFloat($(this).find("td:eq(4)").text());
+                invoiceDetailViewModel.ProductId = parseFloat($(this).find("td:eq(0)").text());;
+                invoiceDetailViewModel.Quantity = parseFloat($(this).find("td:eq(3)").text());;
+                invoiceDetailViewModel.UnitPrice = parseFloat($(this).find("td:eq(2)").text());;
+                invoiceDetailsList.push(invoiceDetailViewModel);
+            });
+
+            invoiceViewModel.InvoiceDetailsList = invoiceDetailsList;
+
+            $.ajax({
+                async: true,
+                type:'POST',
+                dataType: 'JSON',
+                contentType: "application/json; charset = utf-8",
+                data: JSON.stringify(invoiceViewModel),
+                url: '/Invoice/Index',
+                success: function (data) {
+                    alert("data added successfully!");
+                    window.location.href = '/home/index'
+                },
+                error: function () {
+                    alert("There is some problem to add data!");
+                }
+            });
+        }
+      
+        //add product details to table.
+        function addToProductsTable()
+        {
+            const productsTable = $("#productsTable");
+            const unitPrice = $("#txtUnitPrice").val();
+            const quantity = $("#txtQuantity").val();
+            const totalPrice = unitPrice * quantity;
+            const productId = $("#Product option:selected").val();
+            const productName = $("#Product option:selected").text();
+
+            const productList =
+            `<tr>
+                 <td hidden>${productId}</td>
+                 <td>${productName}</td>
+                 <td>${parseFloat(unitPrice).toFixed(2)}</td>
+                 <td>${quantity}</td>
+                 <td>${parseFloat(totalPrice).toFixed(2)}</td>
+                 <td><input type="button" name="remove" value="Remove" class="btn btn-danger" onclick="removeProductFromTable(this)" style="margin-bottom:15px" /></td>
+            </tr>`;
+
+            if (quantity < 1 && productId == 0)
+                alert("Please choose product and quantity!");
+
+            else if (quantity < 1)
+                alert("Please enter quantity!");
+
+            else if (productId == 0)
+                alert("Please choose product!");
+
+            else
+                productsTable.append(productList);
+                calculateInvoiceTotal();
+                resetInputs();
+        }
+
+        //remove product from table.
+        function removeProductFromTable(productId)
+        {
+            $(productId).closest('tr').remove();
+            calculateInvoiceTotal();
+
+        }
+
+        function resetInputs()
+        {
+            $("#txtUnitPrice").val('');
+            $("#txtQuantity").val('');
+            $("#Product").val(0);
+            $("#txtTotal").val('');
+        }
+
+        //calculate total price of a product.
+        function calculateSubTotal()
+        {
+            const unitPrice = $("#txtUnitPrice").val();
+            const quantity = $("#txtQuantity").val();
+
+            const total = unitPrice * quantity;
+            $("#txtTotal").val(parseFloat(total).toFixed(2));
+        }
+
+        //get and populate product price into price input.
+        function getProductUnitPrice(productId) {
+            $.ajax({
+                async: true,
+                type: 'GET',
+                dataType: 'JSON',
+                contentType: 'application/json; charset=utf-8',
+                data: { productId: productId },
+                url: '/Invoice/GetProductUnitPrice',
+                success: function (data) {
+                    $("#txtUnitPrice").val(parseFloat(data).toFixed(2));
+                },
+                error: function () {
+                    if (productId == 0) 
+                        alert("Please choose product!");
+                    else
+                        alert("There is problem to get unit price!");
+                }
+            })
+        }
+
+        function calculateInvoiceTotal()
+        {
+            
+            $("#txtInvoiceTotal").val("0.00");
+
+           let finalTotal = 0;
+            $("#productsTable").find("tr:gt(0)").each(function () {
+                let total = $(this).find("td:eq(4)").text();
+                finalTotal = parseFloat(finalTotal) + parseFloat(total);
+       
+            });
+           
+            $("#txtInvoiceTotal").val(parseFloat(finalTotal).toFixed(2));
+        }
+
+    </script>
+}

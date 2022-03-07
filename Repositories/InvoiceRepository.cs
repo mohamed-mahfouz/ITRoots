@@ -40,5 +40,20 @@ namespace ITRoots.Repositories
             _dbContext.SaveChanges();
             return true;
         }
+
+         public List<Invoice> GetInvoices()
+        {
+            return _dbContext.Invoices.ToList();
+        }
+
+        public Invoice GetInvoiceById(int id)
+        {
+            return _dbContext.Invoices.FirstOrDefault(i => i.Id == id);
+        }
+
+        public List<InvoiceDetail> GetInvoiceDetails(int invoiceId)
+        {
+           return _dbContext.InvoiceDetails.Where(i => i.InvoiceId == invoiceId).ToList();
+        }
     }
 }

@@ -20,21 +20,34 @@ namespace ITRoots.Controllers
 
         }
 
-      
         public ActionResult Index()
         {
-            var products = _productRepository.GetProducts();
-            var productsWithDefaultValue = new List<Product>
+            if ((string)Session["UserRole"] == "User" || (string)Session["UserRole"] == "Admin")
+                return View();
+
+            return RedirectToAction("Login", "Account");
+        }
+      
+        public ActionResult Create()
+        {
+            if ((string)Session["UserRole"] == "Admin")
+            {
+                var products = _productRepository.GetProducts();
+                var productsWithDefaultValue = new List<Product>
             {
                 new Product { Name = "---Choose Product---" }
             };
-            productsWithDefaultValue.AddRange(products);
+                productsWithDefaultValue.AddRange(products);
 
-            return View(productsWithDefaultValue);
+                return View(productsWithDefaultValue);
+
+            }
+
+            return RedirectToAction("Login", "Account");
         }
 
         [HttpPost]
-        public JsonResult Index(InvoiceViewModel invoiceViewModel)
+        public JsonResult Create(InvoiceViewModel invoiceViewModel)
         {
 
             _invoiceRepository.AddInvoice(invoiceViewModel);
@@ -43,7 +56,13 @@ namespace ITRoots.Controllers
 
         public ActionResult Details(int id)
         {
-            return View();
+            var invoice = _invoiceRepository.GetInvoiceById(id);
+            if (invoice == null)
+                return HttpNotFound();
+
+            var invoiceDetails = _invoiceRepository.GetInvoiceDetails(id);
+
+            return View(invoiceDetails);
         }
 
         [HttpGet]
@@ -52,5 +71,13 @@ namespace ITRoots.Controllers
             var unitPrice = _productRepository.GetProducts().Single(p => p.Id == productId).Price;
             return Json(unitPrice, JsonRequestBehavior.AllowGet);
         }
+
+        public ActionResult GetInvoices()
+        {
+            var invoices = _invoiceRepository.GetInvoices();
+
+            return Json(new { data = invoices }, JsonRequestBehavior.AllowGet);
+        }
+
     }
 }

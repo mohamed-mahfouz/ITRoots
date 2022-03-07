@@ -28,6 +28,11 @@ namespace ITRoots.Migrations
                 new Product() { Id = 9, Name = "Tea", Price = 10m },
                 new Product() { Id = 10, Name = "Orange Juice", Price = 30.66m }
                 );
+
+            context.Roles.AddOrUpdate(r => r.Id,
+                new Role () { Id = Guid.NewGuid(),RoleName = "Admin"},
+                new Role() { Id = Guid.NewGuid(), RoleName = "User" }
+                );
         }
     }
 }
